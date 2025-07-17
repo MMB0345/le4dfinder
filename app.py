@@ -114,42 +114,40 @@ if st.button("Start zoeken"):
     st.session_state["resultaten"] = haal_bedrijven_op(plaats)
 
 if "resultaten" in st.session_state and st.session_state["resultaten"]:
-        st.success(f"{len(resultaten)} bedrijven gevonden in {plaats}.")
-        df_resultaat = pd.DataFrame(st.session_state["resultaten"])
+    df_resultaat = pd.DataFrame(st.session_state["resultaten"])
 
-        # Sidebar filters
-        st.sidebar.header("🔎 Filters")
-        unieke_categorieen = sorted(df_resultaat['Categorie'].unique())
-        gekozen_categorie = st.sidebar.selectbox("Filter op categorie (werkend)", ["Alles"] + unieke_categorieen, key="filter_keuze")
-        if gekozen_categorie != "Alles":
-            df_resultaat = df_resultaat[df_resultaat['Categorie'] == gekozen_categorie]
-        
-        # Samenvatting
-        st.markdown(f"### 📊 {len(df_resultaat)} resultaten met gemiddelde score van {df_resultaat['Leadscore'].mean():.1f}")
+    # Sidebar filters
+    st.sidebar.header("🔎 Filters")
+    unieke_categorieen = sorted(df_resultaat['Categorie'].unique())
+    gekozen_categorie = st.sidebar.selectbox("Filter op categorie (werkend)", ["Alles"] + unieke_categorieen, key="filter_keuze")
+    if gekozen_categorie != "Alles":
+        df_resultaat = df_resultaat[df_resultaat['Categorie'] == gekozen_categorie]
 
-        # Leadscore visueel
-        def score_icoon(score):
-            if score >= 7:
-                return f"🟢 {score}"
-            elif score >= 6:
-                return f"🟡 {score}"
-            else:
-                return f"🔴 {score}"
-        df_resultaat['Leadscore'] = df_resultaat['Leadscore'].apply(score_icoon)
+    # Samenvatting
+    st.markdown(f"### 📊 {len(df_resultaat)} resultaten met gemiddelde score van {df_resultaat['Leadscore'].mean():.1f}")
 
-        # Data tonen
-        # Data tonen als HTML-tabel met werkende links
-        st.markdown(df_resultaat.to_html(escape=False, index=False), unsafe_allow_html=True)
+    # Leadscore visueel
+    def score_icoon(score):
+        if score >= 7:
+            return f"🟢 {score}"
+        elif score >= 6:
+            return f"🟡 {score}"
+        else:
+            return f"🔴 {score}"
+    df_resultaat['Leadscore'] = df_resultaat['Leadscore'].apply(score_icoon)
 
-        # Downloadknop voor Excel-export
-        excel_buffer = io.BytesIO()
-        df_resultaat.to_excel(excel_buffer, index=False, engine='openpyxl')
-        excel_buffer.seek(0)
-        st.download_button(
-            label="📥 Download als Excel-bestand",
-            data=excel_buffer,
-            file_name=f"leadfinder_{plaats.lower()}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    else:
-        st.warning("Geen bedrijven gevonden. Controleer de plaatsnaam of probeer een andere regio.")
+    # Data tonen als HTML-tabel met werkende links
+    st.markdown(df_resultaat.to_html(escape=False, index=False), unsafe_allow_html=True)
+
+    # Downloadknop voor Excel-export
+    excel_buffer = io.BytesIO()
+    df_resultaat.to_excel(excel_buffer, index=False, engine='openpyxl')
+    excel_buffer.seek(0)
+    st.download_button(
+        label="📥 Download als Excel-bestand",
+        data=excel_buffer,
+        file_name=f"leadfinder_{plaats.lower()}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+else:
+    st.warning("Geen bedrijven gevonden. Controleer de plaatsnaam of probeer een andere regio.")
