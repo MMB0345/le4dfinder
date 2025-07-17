@@ -5,6 +5,25 @@ import urllib.parse
 import io
 
 st.set_page_config(page_title="LeadFinder - Let's Go Pest Control", layout="wide")
+st.markdown("""
+    <style>
+    .mouse-run {
+        position: fixed;
+        top: 20px;
+        left: -150px;
+        width: 100px;
+        z-index: 9999;
+        animation: runmouse 3s linear forwards;
+    }
+    
+    @keyframes runmouse {
+        from { left: -150px; }
+        to { left: 100%; }
+    }
+    </style>
+    <img src='https://le4dfinder.streamlit.app/files/f40aa35a-8787-4044-ac3e-9286b9b4b6d3.png' class='mouse-run'>
+    """, unsafe_allow_html=True)
+
 st.title("🔍 LeadFinder - Let's Go Pest Control")
 
 plaats = st.text_input("Vul een plaatsnaam of provincie in", value="Gorinchem").strip().capitalize()
