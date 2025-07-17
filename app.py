@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import urllib.parse
+import io
 
 st.set_page_config(page_title="LeadFinder – Ongediertebestrijding", layout="wide")
 st.title("🔍 LeadFinder – Bedrijven met kans op ongediertebestrijding")
@@ -12,18 +13,18 @@ plaats = st.text_input("Vul een plaatsnaam of provincie in", value="Gorinchem").
 def build_overpass_query(plaats):
     return f"""
     [out:json];
-    area[name="{plaats}"]->.zoekgebied;
+    area[name=\"{plaats}\"]->.zoekgebied;
     (
-      node["amenity"="hospital"](area.zoekgebied);
-      node["amenity"="pharmacy"](area.zoekgebied);
-      node["amenity"="school"](area.zoekgebied);
-      node["amenity"="kindergarten"](area.zoekgebied);
-      node["shop"="supermarket"](area.zoekgebied);
-      node["shop"="bakery"](area.zoekgebied);
-      node["shop"="butcher"](area.zoekgebied);
-      node["craft"="confectionery"](area.zoekgebied);
-      node["industrial"="food"](area.zoekgebied);
-      node["man_made"="works"](area.zoekgebied);
+      node[\"amenity\"=\"hospital\"](area.zoekgebied);
+      node[\"amenity\"=\"pharmacy\"](area.zoekgebied);
+      node[\"amenity\"=\"school\"](area.zoekgebied);
+      node[\"amenity\"=\"kindergarten\"](area.zoekgebied);
+      node[\"shop\"=\"supermarket\"](area.zoekgebied);
+      node[\"shop\"=\"bakery\"](area.zoekgebied);
+      node[\"shop\"=\"butcher\"](area.zoekgebied);
+      node[\"craft\"=\"confectionery\"](area.zoekgebied);
+      node[\"industrial\"=\"food\"](area.zoekgebied);
+      node[\"man_made\"=\"works\"](area.zoekgebied);
     );
     out body;
     """
@@ -71,8 +72,8 @@ def haal_bedrijven_op(plaats):
         elif branche in ["supermarket", "confectionery"]:
             score += 1
 
-        zoek_telefoon = f'<a href="https://www.google.com/search?q=telefoonnummer+{naam.replace(" ", "+")}+{plaats.replace(" ", "+")}" target="_blank">Zoek telefoonnummer</a>'
-        zoek_contact = f'<a href="https://www.google.com/search?q=contactpersoon+eigenaar+{naam.replace(" ", "+")}+{plaats.replace(" ", "+")}" target="_blank">Zoek contactpersoon</a>'
+        zoek_telefoon = f"Telefoonnummer {naam}, {plaats}"
+        zoek_contact = f"Contactpersoon eigenaar {naam}, {plaats}"
 
         bedrijven.append({
             "Naam instelling": naam,
@@ -94,11 +95,10 @@ if st.button("Start zoeken"):
         st.markdown(df_resultaat.to_html(escape=False, index=False), unsafe_allow_html=True)
 
         # Downloadknop voor Excel-export
-        import io
-excel_buffer = io.BytesIO()
-df_resultaat.to_excel(excel_buffer, index=False, engine='openpyxl')
-excel_buffer.seek(0)
-                st.download_button(
+        excel_buffer = io.BytesIO()
+        df_resultaat.to_excel(excel_buffer, index=False, engine='openpyxl')
+        excel_buffer.seek(0)
+        st.download_button(
             label="📥 Download als Excel-bestand",
             data=excel_buffer,
             file_name=f"leadfinder_{plaats.lower()}.xlsx",
