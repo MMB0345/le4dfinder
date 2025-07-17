@@ -98,7 +98,7 @@ if st.button("Start zoeken"):
 excel_buffer = io.BytesIO()
 df_resultaat.to_excel(excel_buffer, index=False, engine='openpyxl')
 excel_buffer.seek(0)
-        st.download_button(
+                st.download_button(
             label="📥 Download als Excel-bestand",
             data=excel_buffer,
             file_name=f"leadfinder_{plaats.lower()}.xlsx",
