@@ -125,7 +125,8 @@ if st.button("Start zoeken"):
         df_resultaat['Leadscore'] = df_resultaat['Leadscore'].apply(score_icoon)
 
         # Data tonen
-        st.dataframe(df_resultaat.style.hide(axis='index'), use_container_width=True)
+        # Data tonen als HTML-tabel met werkende links
+        st.markdown(df_resultaat.to_html(escape=False, index=False), unsafe_allow_html=True)
 
         # Downloadknop voor Excel-export
         excel_buffer = io.BytesIO()
