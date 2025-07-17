@@ -6,7 +6,7 @@ import urllib.parse
 st.set_page_config(page_title="LeadFinder – Ongediertebestrijding", layout="wide")
 st.title("🔍 LeadFinder – Bedrijven met kans op ongediertebestrijding")
 
-plaats = st.text_input("Vul een plaatsnaam in", value="Gorinchem")
+plaats = st.text_input("Vul een plaatsnaam of provincie in", value="Gorinchem").strip().capitalize()
 
 # Overpass API query opstellen (OpenStreetMap)
 def build_overpass_query(plaats):
@@ -14,17 +14,21 @@ def build_overpass_query(plaats):
     [out:json];
     area[name="{plaats}"]->.zoekgebied;
     (
-      node["amenity"="restaurant"](area.zoekgebied);
+      node["amenity"="hospital"](area.zoekgebied);
+      node["amenity"="pharmacy"](area.zoekgebied);
+      node["amenity"="school"](area.zoekgebied);
+      node["amenity"="kindergarten"](area.zoekgebied);
       node["shop"="supermarket"](area.zoekgebied);
       node["shop"="bakery"](area.zoekgebied);
       node["shop"="butcher"](area.zoekgebied);
       node["craft"="confectionery"](area.zoekgebied);
+      node["industrial"="food"](area.zoekgebied);
+      node["man_made"="works"](area.zoekgebied);
     );
     out body;
     """
 
 # API-aanroep en verwerking
-
 def haal_bedrijven_op(plaats):
     overpass_url = "https://overpass-api.de/api/interpreter"
     query = build_overpass_query(plaats)
@@ -43,7 +47,21 @@ def haal_bedrijven_op(plaats):
         straat = tags.get("addr:street", "")
         huisnummer = tags.get("addr:housenumber", "")
         postcode = tags.get("addr:postcode", "")
-        branche = tags.get("shop") or tags.get("amenity") or tags.get("craft", "")
+        branche_raw = tags.get("shop") or tags.get("amenity") or tags.get("craft", "")
+        branche_map = {
+            "hospital": "Ziekenhuis",
+            "pharmacy": "Apotheek",
+            "school": "School",
+            "kindergarten": "Kinderdagverblijf",
+            "restaurant": "Restaurant",
+            "bakery": "Bakkerij",
+            "butcher": "Slager",
+            "supermarket": "Supermarkt",
+            "confectionery": "Zoetwaren",
+            "food": "Voedselfabriek",
+            "works": "Productielocatie"
+        }
+        branche = branche_map.get(branche_raw, branche_raw.capitalize())
 
         adres = f"{straat} {huisnummer}, {postcode}".strip().strip(',')
 
@@ -53,15 +71,16 @@ def haal_bedrijven_op(plaats):
         elif branche in ["supermarket", "confectionery"]:
             score += 1
 
-        zoek_telefoon = f"https://www.google.com/search?q=telefoonnummer+{urllib.parse.quote(naam)}+{urllib.parse.quote(plaats)}"
+        zoek_telefoon = f"https://www.google.com/search?q=telefoonnummer+{naam.replace(' ', '+')}+{plaats.replace(' ', '+')}"
+        zoek_contact = f"https://www.google.com/search?q=contactpersoon+eigenaar+{naam.replace(' ', '+')}+{plaats.replace(' ', '+')}"
 
         bedrijven.append({
-            "Bedrijfsnaam": naam,
+            "Naam instelling": naam,
             "Adres": adres if adres else "Onbekend",
             "Categorie": branche,
             "Leadscore": score,
             "Telefoonnummer (zoeken)": zoek_telefoon,
-            "Zoek online": f"Zoek op: {naam} {plaats}"
+            "Contactpersoon (zoeken)": zoek_contact
         })
 
     return bedrijven
@@ -71,6 +90,16 @@ if st.button("Start zoeken"):
     resultaten = haal_bedrijven_op(plaats)
     if resultaten:
         st.success(f"{len(resultaten)} bedrijven gevonden in {plaats}.")
-        st.dataframe(pd.DataFrame(resultaten))
+        df_resultaat = pd.DataFrame(resultaten)
+        st.dataframe(df_resultaat)
+
+        # Downloadknop voor Excel-export
+        excel = df_resultaat.to_excel(index=False, engine='openpyxl')
+        st.download_button(
+            label="📥 Download als Excel-bestand",
+            data=excel,
+            file_name=f"leadfinder_{plaats.lower()}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
     else:
         st.warning("Geen bedrijven gevonden. Controleer de plaatsnaam of probeer een andere regio.")
