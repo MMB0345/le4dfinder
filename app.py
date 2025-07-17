@@ -71,8 +71,8 @@ def haal_bedrijven_op(plaats):
         elif branche in ["supermarket", "confectionery"]:
             score += 1
 
-        zoek_telefoon = f"https://www.google.com/search?q=telefoonnummer+{naam.replace(' ', '+')}+{plaats.replace(' ', '+')}"
-        zoek_contact = f"https://www.google.com/search?q=contactpersoon+eigenaar+{naam.replace(' ', '+')}+{plaats.replace(' ', '+')}"
+        zoek_telefoon = f'<a href="https://www.google.com/search?q=telefoonnummer+{naam.replace(" ", "+")}+{plaats.replace(" ", "+")}" target="_blank">Zoek telefoonnummer</a>'
+        zoek_contact = f'<a href="https://www.google.com/search?q=contactpersoon+eigenaar+{naam.replace(" ", "+")}+{plaats.replace(" ", "+")}" target="_blank">Zoek contactpersoon</a>'
 
         bedrijven.append({
             "Naam instelling": naam,
@@ -91,13 +91,16 @@ if st.button("Start zoeken"):
     if resultaten:
         st.success(f"{len(resultaten)} bedrijven gevonden in {plaats}.")
         df_resultaat = pd.DataFrame(resultaten)
-        st.dataframe(df_resultaat)
+        st.markdown(df_resultaat.to_html(escape=False, index=False), unsafe_allow_html=True)
 
         # Downloadknop voor Excel-export
-        excel = df_resultaat.to_excel(index=False, engine='openpyxl')
+        import io
+excel_buffer = io.BytesIO()
+df_resultaat.to_excel(excel_buffer, index=False, engine='openpyxl')
+excel_buffer.seek(0)
         st.download_button(
             label="📥 Download als Excel-bestand",
-            data=excel,
+            data=excel_buffer,
             file_name=f"leadfinder_{plaats.lower()}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
