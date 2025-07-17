@@ -72,14 +72,15 @@ def haal_bedrijven_op(plaats):
         adres = f"{straat} {huisnummer}, {postcode}".strip().strip(',')
 
         score = 5
-        if branche in ["restaurant", "bakery", "butcher"]:
+        if branche_raw in ["restaurant", "bakery", "butcher"]:
             score += 2
-        elif branche in ["supermarket", "confectionery"]:
+        elif branche_raw in ["supermarket", "confectionery"]:
             score += 1
 
         zoek_telefoon = f'<a href="https://www.google.com/search?q=telefoonnummer+{naam.replace(" ", "+")}+{plaats.replace(" ", "+")}" target="_blank">KLIK</a>'
         
-        bedrijven.append({
+        if adres != "Onbekend":
+            bedrijven.append({
             "Naam instelling": naam,
             "Adres": adres if adres else "Onbekend",
             "Categorie": branche,
@@ -95,11 +96,36 @@ if st.button("Start zoeken"):
     if resultaten:
         st.success(f"{len(resultaten)} bedrijven gevonden in {plaats}.")
         df_resultaat = pd.DataFrame(resultaten)
+
+        # Sidebar filters
+        st.sidebar.header("🔎 Filters")
+        unieke_categorieen = sorted(df_resultaat['Categorie'].unique())
+        gekozen_categorie = st.sidebar.selectbox("Categorie", ["Alles"] + unieke_categorieen)
+        if gekozen_categorie != "Alles":
+            df_resultaat = df_resultaat[df_resultaat['Categorie'] == gekozen_categorie]
+
+        min_score = st.sidebar.slider("Minimum leadscore", 1, 10, 5)
+        df_resultaat = df_resultaat[df_resultaat['Leadscore'] >= min_score]
+        
         unieke_categorieen = sorted(df_resultaat['Categorie'].unique())
         gekozen_categorie = st.selectbox("Filter op categorie", ["Alles"] + unieke_categorieen)
         if gekozen_categorie != "Alles":
             df_resultaat = df_resultaat[df_resultaat['Categorie'] == gekozen_categorie]
-        st.markdown(df_resultaat.to_html(escape=False, index=False), unsafe_allow_html=True)
+        # Samenvatting
+        st.markdown(f"### 📊 {len(df_resultaat)} resultaten met gemiddelde score van {df_resultaat['Leadscore'].mean():.1f}")
+
+        # Leadscore visueel
+        def score_icoon(score):
+            if score >= 7:
+                return f"🟢 {score}"
+            elif score >= 6:
+                return f"🟡 {score}"
+            else:
+                return f"🔴 {score}"
+        df_resultaat['Leadscore'] = df_resultaat['Leadscore'].apply(score_icoon)
+
+        # Data tonen
+        st.dataframe(df_resultaat.style.hide(axis='index'), use_container_width=True)
 
         # Downloadknop voor Excel-export
         excel_buffer = io.BytesIO()
