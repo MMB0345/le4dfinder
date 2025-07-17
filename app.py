@@ -111,15 +111,16 @@ def haal_bedrijven_op(plaats):
 
 if st.button("Start zoeken"):
     st.info(f"We halen bedrijven op in de regio: {plaats}")
-    resultaten = haal_bedrijven_op(plaats)
-    if resultaten:
+    st.session_state["resultaten"] = haal_bedrijven_op(plaats)
+
+if "resultaten" in st.session_state and st.session_state["resultaten"]:
         st.success(f"{len(resultaten)} bedrijven gevonden in {plaats}.")
-        df_resultaat = pd.DataFrame(resultaten)
+        df_resultaat = pd.DataFrame(st.session_state["resultaten"])
 
         # Sidebar filters
         st.sidebar.header("🔎 Filters")
         unieke_categorieen = sorted(df_resultaat['Categorie'].unique())
-        gekozen_categorie = st.sidebar.selectbox("Filter op categorie", ["Alles"] + unieke_categorieen)
+        gekozen_categorie = st.sidebar.selectbox("Filter op categorie (werkend)", ["Alles"] + unieke_categorieen, key="filter_keuze")
         if gekozen_categorie != "Alles":
             df_resultaat = df_resultaat[df_resultaat['Categorie'] == gekozen_categorie]
         
