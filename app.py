@@ -42,6 +42,7 @@ def haal_bedrijven_op(plaats):
         return []
 
     bedrijven = []
+    grote_ketens = ["Albert Heijn", "Jumbo", "Lidl", "PLUS", "Aldi", "Coop"]
     for element in data.get("elements", []):
         tags = element.get("tags", {})
         naam = tags.get("name", "Onbekend")
@@ -64,6 +65,10 @@ def haal_bedrijven_op(plaats):
         }
         branche = branche_map.get(branche_raw, branche_raw.capitalize())
 
+        # Grote supermarktketens overslaan
+        if branche == "Supermarkt" and any(k in naam for k in grote_ketens):
+            continue
+
         adres = f"{straat} {huisnummer}, {postcode}".strip().strip(',')
 
         score = 5
@@ -72,16 +77,14 @@ def haal_bedrijven_op(plaats):
         elif branche in ["supermarket", "confectionery"]:
             score += 1
 
-        zoek_telefoon = f"Telefoonnummer {naam}, {plaats}"
-        zoek_contact = f"Contactpersoon eigenaar {naam}, {plaats}"
-
+        zoek_telefoon = f'<a href="https://www.google.com/search?q=telefoonnummer+{naam.replace(" ", "+")}+{plaats.replace(" ", "+")}" target="_blank">KLIK</a>'
+        
         bedrijven.append({
             "Naam instelling": naam,
             "Adres": adres if adres else "Onbekend",
             "Categorie": branche,
             "Leadscore": score,
-            "Telefoonnummer (zoeken)": zoek_telefoon,
-            "Contactpersoon (zoeken)": zoek_contact
+            "Telefoonnummer": zoek_telefoon
         })
 
     return bedrijven
@@ -92,6 +95,10 @@ if st.button("Start zoeken"):
     if resultaten:
         st.success(f"{len(resultaten)} bedrijven gevonden in {plaats}.")
         df_resultaat = pd.DataFrame(resultaten)
+        unieke_categorieen = sorted(df_resultaat['Categorie'].unique())
+        gekozen_categorie = st.selectbox("Filter op categorie", ["Alles"] + unieke_categorieen)
+        if gekozen_categorie != "Alles":
+            df_resultaat = df_resultaat[df_resultaat['Categorie'] == gekozen_categorie]
         st.markdown(df_resultaat.to_html(escape=False, index=False), unsafe_allow_html=True)
 
         # Downloadknop voor Excel-export
