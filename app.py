@@ -1,54 +1,76 @@
 import streamlit as st
 import requests
-from bs4 import BeautifulSoup
+import pandas as pd
+import urllib.parse
 
-# Streamlit webinterface om leads te tonen op basis van plaatsnaam
 st.set_page_config(page_title="LeadFinder – Ongediertebestrijding", layout="wide")
 st.title("🔍 LeadFinder – Bedrijven met kans op ongediertebestrijding")
 
-plaats = st.text_input("Voer een plaatsnaam in", value="Gorinchem")
+plaats = st.text_input("Vul een plaatsnaam in", value="Gorinchem")
 
-def scrape_bedrijven(plaats):
-    headers = {"User-Agent": "Mozilla/5.0"}
-    url = f"https://www.telefoonboek.nl/zoeken/{plaats}/?what=restaurant"
+# Overpass API query opstellen (OpenStreetMap)
+def build_overpass_query(plaats):
+    return f"""
+    [out:json];
+    area[name="{plaats}"]->.zoekgebied;
+    (
+      node["amenity"="restaurant"](area.zoekgebied);
+      node["shop"="supermarket"](area.zoekgebied);
+      node["shop"="bakery"](area.zoekgebied);
+      node["shop"="butcher"](area.zoekgebied);
+      node["craft"="confectionery"](area.zoekgebied);
+    );
+    out body;
+    """
+
+# API-aanroep en verwerking
+@st.cache_data(show_spinner=False)
+def haal_bedrijven_op(plaats):
+    overpass_url = "https://overpass-api.de/api/interpreter"
+    query = build_overpass_query(plaats)
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.post(overpass_url, data=query, timeout=25)
         response.raise_for_status()
-    except requests.RequestException as e:
+        data = response.json()
+    except Exception as e:
         st.error(f"Fout bij het ophalen van gegevens: {e}")
         return []
 
-    soup = BeautifulSoup(response.text, "html.parser")
-
     bedrijven = []
-    for item in soup.select(".search-item__content"):
-        naam_tag = item.select_one("h2.heading")
-        adres_tag = item.select_one("div.contact-item__address")
+    for element in data.get("elements", []):
+        tags = element.get("tags", {})
+        naam = tags.get("name", "Onbekend")
+        straat = tags.get("addr:street", "")
+        huisnummer = tags.get("addr:housenumber", "")
+        postcode = tags.get("addr:postcode", "")
+        branche = tags.get("shop") or tags.get("amenity") or tags.get("craft", "")
 
-        naam = naam_tag.text.strip() if naam_tag else "Onbekend"
-        adres = adres_tag.text.strip().replace("\n", " ") if adres_tag else "-"
+        adres = f"{straat} {huisnummer}, {postcode}".strip().strip(',')
 
         score = 5
-        if any(x in naam.lower() for x in ['restaurant', 'bistro', 'brasserie']):
+        if branche in ["restaurant", "bakery", "butcher"]:
             score += 2
-        if any(x in naam.lower() for x in ['hotel', 'grill', 'catering']):
+        elif branche in ["supermarket", "confectionery"]:
             score += 1
 
+        zoek_telefoon = f"https://www.google.com/search?q=telefoonnummer+{urllib.parse.quote(naam)}+{urllib.parse.quote(plaats)}"
+
         bedrijven.append({
-            "Bedrijf": naam,
-            "Adres": adres,
+            "Bedrijfsnaam": naam,
+            "Adres": adres if adres else "Onbekend",
+            "Categorie": branche,
             "Leadscore": score,
-            "Contactoptie": f"Zoek op: {naam}"
+            "Telefoonnummer (zoeken)": zoek_telefoon,
+            "Zoek online": f"Zoek op: {naam} {plaats}"
         })
 
     return bedrijven
 
 if st.button("Start zoeken"):
-    st.info(f"Bedrijven worden gezocht in: {plaats}")
-    resultaten = scrape_bedrijven(plaats)
-
+    st.info(f"We halen bedrijven op in de regio: {plaats}")
+    resultaten = haal_bedrijven_op(plaats)
     if resultaten:
         st.success(f"{len(resultaten)} bedrijven gevonden in {plaats}.")
-        st.dataframe(resultaten)
+        st.dataframe(pd.DataFrame(resultaten))
     else:
-        st.warning("Geen bedrijven gevonden. Probeer een andere plaats of controleer je internetverbinding.")
+        st.warning("Geen bedrijven gevonden. Controleer de plaatsnaam of probeer een andere regio.")
