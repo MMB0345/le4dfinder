@@ -4,8 +4,8 @@ import pandas as pd
 import urllib.parse
 import io
 
-st.set_page_config(page_title="LeadFinder – Ongediertebestrijding", layout="wide")
-st.title("🔍 LeadFinder – Bedrijven met kans op ongediertebestrijding")
+st.set_page_config(page_title="LeadFinder - Let's Go Pest Control", layout="wide")
+st.title("🔍 LeadFinder - Let's Go Pest Control")
 
 plaats = st.text_input("Vul een plaatsnaam of provincie in", value="Gorinchem").strip().capitalize()
 
