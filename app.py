@@ -119,17 +119,10 @@ if st.button("Start zoeken"):
         # Sidebar filters
         st.sidebar.header("🔎 Filters")
         unieke_categorieen = sorted(df_resultaat['Categorie'].unique())
-        gekozen_categorie = st.sidebar.selectbox("Categorie", ["Alles"] + unieke_categorieen)
+        gekozen_categorie = st.sidebar.selectbox("Filter op categorie", ["Alles"] + unieke_categorieen)
         if gekozen_categorie != "Alles":
             df_resultaat = df_resultaat[df_resultaat['Categorie'] == gekozen_categorie]
-
-        min_score = st.sidebar.slider("Minimum leadscore", 1, 10, 5)
-        df_resultaat = df_resultaat[df_resultaat['Leadscore'] >= min_score]
         
-        unieke_categorieen = sorted(df_resultaat['Categorie'].unique())
-        gekozen_categorie = st.selectbox("Filter op categorie", ["Alles"] + unieke_categorieen)
-        if gekozen_categorie != "Alles":
-            df_resultaat = df_resultaat[df_resultaat['Categorie'] == gekozen_categorie]
         # Samenvatting
         st.markdown(f"### 📊 {len(df_resultaat)} resultaten met gemiddelde score van {df_resultaat['Leadscore'].mean():.1f}")
 
