@@ -1,18 +1,21 @@
-import streamlit as st
-import requests
-from bs4 import BeautifulSoup
-
-# Streamlit webinterface om leads te tonen op basis van plaatsnaam
-st.set_page_config(page_title="LeadFinder – Ongediertebestrijding", layout="wide")
-st.title("🔍 LeadFinder – Bedrijven met kans op ongediertebestrijding")
-
-plaats = st.text_input("Voer een plaatsnaam in", value="Gorinchem")
-
+try:
+    import requests
+    from bs4 import BeautifulSoup
+except ImportError as e:
+    print("Benodigde module ontbreekt: ", e)
+    print("Installeer dependencies met: pip install requests beautifulsoup4")
+    exit()
 
 def scrape_bedrijven(plaats):
     headers = {"User-Agent": "Mozilla/5.0"}
     url = f"https://www.telefoonboek.nl/zoeken/{plaats}/?what=restaurant"
-    response = requests.get(url, headers=headers)
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Fout bij het ophalen van gegevens: {e}")
+        return []
+
     soup = BeautifulSoup(response.text, "html.parser")
 
     bedrijven = []
@@ -38,12 +41,14 @@ def scrape_bedrijven(plaats):
 
     return bedrijven
 
-if st.button("Start zoeken"):
-    st.info(f"Bedrijven worden gezocht in: {plaats}")
+if __name__ == "__main__":
+    plaats = "Gorinchem"
+    print(f"Zoeken naar bedrijven in: {plaats}\n")
     resultaten = scrape_bedrijven(plaats)
 
     if resultaten:
-        st.success(f"{len(resultaten)} bedrijven gevonden in {plaats}.")
-        st.dataframe(resultaten)
+        print(f"{len(resultaten)} bedrijven gevonden in {plaats}:")
+        for r in resultaten:
+            print(f"- {r['Bedrijf']} | {r['Adres']} | Leadscore: {r['Leadscore']} | {r['Contactoptie']}")
     else:
-        st.warning("Geen bedrijven gevonden. Probeer een andere plaats.")
+        print("Geen bedrijven gevonden. Probeer een andere plaats of controleer je internetverbinding.")
