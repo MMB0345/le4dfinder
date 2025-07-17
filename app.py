@@ -24,7 +24,7 @@ def build_overpass_query(plaats):
     """
 
 # API-aanroep en verwerking
-@st.cache_data(show_spinner=False)
+
 def haal_bedrijven_op(plaats):
     overpass_url = "https://overpass-api.de/api/interpreter"
     query = build_overpass_query(plaats)
