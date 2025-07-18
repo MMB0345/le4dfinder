@@ -26,6 +26,7 @@ st.markdown("""
 
 st.title("🔍 LeadFinder - Let's Go Pest Control")
 
+# Tekstveld voor plaatsnaam zonder standaardwaarde
 plaats = st.text_input("Vul een plaatsnaam of provincie in").strip().capitalize()
 
 # Overpass API query
@@ -113,9 +114,15 @@ def haal_bedrijven_op(plaats):
 
     return bedrijven
 
-if st.button("Start zoeken") and plaats:
+# Enter-key trigger of knop
+start = st.button("Start zoeken") or (plaats and st.session_state.get("auto_search") == plaats)
+
+if plaats and start:
     st.info(f"We halen bedrijven op in de regio: {plaats}")
     st.session_state["resultaten"] = haal_bedrijven_op(plaats)
+    st.session_state["auto_search"] = plaats
+elif start and not plaats:
+    st.warning("Voer eerst een plaatsnaam of provincie in.")
 
 if "resultaten" in st.session_state and st.session_state["resultaten"]:
     df_resultaat = pd.DataFrame(st.session_state["resultaten"])
@@ -153,5 +160,3 @@ if "resultaten" in st.session_state and st.session_state["resultaten"]:
         file_name=f"leadfinder_{plaats.lower()}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-elif st.button("Start zoeken") and not plaats:
-    st.warning("Voer eerst een plaatsnaam of provincie in.")
