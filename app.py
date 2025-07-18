@@ -26,20 +26,21 @@ st.markdown("""
 
 st.title("🔍 LeadFinder - Let's Go Pest Control")
 
-# Tekstveld voor plaatsnaam zonder standaardwaarde
 plaats = st.text_input("Vul een plaatsnaam of provincie in").strip().capitalize()
 
-# Overpass API query
+# Overpass API query met horeca & recreatie
 def build_overpass_query(plaats):
     return f"""
     [out:json];
     area[name="{plaats}"]->.zoekgebied;
     (
-      node["amenity"~"hospital|pharmacy|school|kindergarten"](area.zoekgebied);
+      node["amenity"~"hospital|pharmacy|school|kindergarten|restaurant|cafe|bar|fast_food|pub|biergarten"](area.zoekgebied);
       node["shop"~"supermarket|bakery|butcher"](area.zoekgebied);
       node["craft"="confectionery"](area.zoekgebied);
       node["industrial"="food"](area.zoekgebied);
       node["man_made"="works"](area.zoekgebied);
+      node["tourism"="hotel"](area.zoekgebied);
+      node["leisure"="bowling_alley"](area.zoekgebied);
     );
     out tags;
     """
@@ -66,12 +67,19 @@ def haal_bedrijven_op(plaats):
         "school": "School",
         "kindergarten": "Kinderdagverblijf",
         "restaurant": "Restaurant",
+        "cafe": "Café",
+        "bar": "Bar",
+        "fast_food": "Fastfood",
+        "pub": "Pub",
+        "biergarten": "Biergarten",
+        "hotel": "Hotel",
         "bakery": "Bakkerij",
         "butcher": "Slager",
         "supermarket": "Supermarkt",
         "confectionery": "Zoetwaren",
         "food": "Voedselfabriek",
-        "works": "Productielocatie"
+        "works": "Productielocatie",
+        "bowling_alley": "Bowlingbaan"
     }
 
     for element in data.get("elements", []):
@@ -87,7 +95,13 @@ def haal_bedrijven_op(plaats):
         straat = tags.get("addr:street", "")
         huisnummer = tags.get("addr:housenumber", "")
         postcode = tags.get("addr:postcode", "")
-        branche_raw = tags.get("shop") or tags.get("amenity") or tags.get("craft", "")
+        branche_raw = (
+            tags.get("shop") or
+            tags.get("amenity") or
+            tags.get("craft") or
+            tags.get("tourism") or
+            tags.get("leisure")
+        )
         branche = branche_map.get(branche_raw, branche_raw.capitalize())
 
         # Grote supermarktketens overslaan
@@ -96,10 +110,11 @@ def haal_bedrijven_op(plaats):
 
         adres = f"{straat} {huisnummer}, {postcode}".strip().strip(',')
 
+        # Leadscore bepalen
         score = 5
-        if branche_raw in ["restaurant", "bakery", "butcher"]:
+        if branche_raw in ["restaurant", "cafe", "bar", "fast_food", "pub", "biergarten", "bakery", "butcher"]:
             score += 2
-        elif branche_raw in ["supermarket", "confectionery"]:
+        elif branche_raw in ["supermarket", "confectionery", "hotel"]:
             score += 1
 
         zoek_telefoon = f'<a href="https://www.google.com/search?q=telefoonnummer+{urllib.parse.quote(naam)}+{urllib.parse.quote(plaats)}" target="_blank">KLIK</a>'
@@ -114,15 +129,15 @@ def haal_bedrijven_op(plaats):
 
     return bedrijven
 
-# Enter-key trigger of knop
-start = st.button("Start zoeken") or (plaats and st.session_state.get("auto_search") == plaats)
+# Startknop
+start = st.button("Start zoeken")
 
-if plaats and start:
-    st.info(f"We halen bedrijven op in de regio: {plaats}")
-    st.session_state["resultaten"] = haal_bedrijven_op(plaats)
-    st.session_state["auto_search"] = plaats
-elif start and not plaats:
-    st.warning("Voer eerst een plaatsnaam of provincie in.")
+if start:
+    if not plaats:
+        st.warning("Voer eerst een plaatsnaam of provincie in.")
+    else:
+        st.info(f"We halen bedrijven op in de regio: {plaats}")
+        st.session_state["resultaten"] = haal_bedrijven_op(plaats)
 
 if "resultaten" in st.session_state and st.session_state["resultaten"]:
     df_resultaat = pd.DataFrame(st.session_state["resultaten"])
