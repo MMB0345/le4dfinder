@@ -26,7 +26,7 @@ st.markdown("""
 
 st.title("🔍 LeadFinder - Let's Go Pest Control")
 
-plaats = st.text_input("Vul een plaatsnaam of provincie in", value="Gorinchem").strip().capitalize()
+plaats = st.text_input("Vul een plaatsnaam of provincie in").strip().capitalize()
 
 # Overpass API query
 def build_overpass_query(plaats):
@@ -45,6 +45,8 @@ def build_overpass_query(plaats):
 
 @st.cache_data(ttl=600)
 def haal_bedrijven_op(plaats):
+    if not plaats:
+        return []
     overpass_url = "https://overpass-api.de/api/interpreter"
     query = build_overpass_query(plaats)
     try:
@@ -111,7 +113,7 @@ def haal_bedrijven_op(plaats):
 
     return bedrijven
 
-if st.button("Start zoeken"):
+if st.button("Start zoeken") and plaats:
     st.info(f"We halen bedrijven op in de regio: {plaats}")
     st.session_state["resultaten"] = haal_bedrijven_op(plaats)
 
@@ -151,5 +153,5 @@ if "resultaten" in st.session_state and st.session_state["resultaten"]:
         file_name=f"leadfinder_{plaats.lower()}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-else:
-    st.warning("Geen bedrijven gevonden. Controleer de plaatsnaam of probeer een andere regio.")
+elif st.button("Start zoeken") and not plaats:
+    st.warning("Voer eerst een plaatsnaam of provincie in.")
