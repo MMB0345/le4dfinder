@@ -92,13 +92,18 @@ def haal_bedrijven_op(plaats):
         if tags.get("disused") == "yes" or tags.get("abandoned") == "yes" or tags.get("closed") == "yes":
             continue
 
-        if "name" not in tags or not tags.get("name").strip():
-            continue
-
-        naam = tags.get("name")
+        naam = tags.get("name", "").strip()
         straat = tags.get("addr:street", "")
         huisnummer = tags.get("addr:housenumber", "")
         postcode = tags.get("addr:postcode", "")
+
+        # Skip naamloze of te generieke locaties
+        if not naam or naam.lower() in ["onbekend", "restaurant", "café", "bar", "bakkerij"]:
+            continue
+
+        # Skip als adres leeg is
+        if not (straat or huisnummer or postcode):
+            continue
 
         branche_raw = (
             tags.get("shop") or
@@ -110,12 +115,12 @@ def haal_bedrijven_op(plaats):
         )
         branche = branche_map.get(branche_raw, branche_raw.capitalize())
 
-        # Grote supermarktketens overslaan
         if branche == "Supermarkt" and any(k in naam for k in grote_ketens):
             continue
 
         adres = f"{straat} {huisnummer}, {postcode}".strip().strip(',')
 
+        # Leadscore bepalen
         score = 5
         if branche_raw in ["restaurant", "cafe", "bar", "fast_food", "pub", "biergarten", "bakery", "butcher"]:
             score += 2
