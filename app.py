@@ -85,9 +85,13 @@ def haal_bedrijven_op(plaats):
     for element in data.get("elements", []):
         tags = element.get("tags", {})
 
-        # Skip gesloten, buiten gebruik of naamloze locaties
-        if any(key in tags for key in ["disused", "abandoned", "closed"]):
+        # Geavanceerde check voor gesloten locaties
+        if any(k.startswith(("disused:", "abandoned:", "was:")) for k in tags.keys()):
             continue
+        if tags.get("disused") == "yes" or tags.get("abandoned") == "yes" or tags.get("closed") == "yes":
+            continue
+
+        # Naam check
         if "name" not in tags or not tags.get("name").strip():
             continue
 
