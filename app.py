@@ -28,7 +28,7 @@ st.title("🔍 LeadFinder - Let's Go Pest Control")
 
 plaats = st.text_input("Vul een plaatsnaam of provincie in").strip().capitalize()
 
-# Overpass API query met horeca & recreatie
+# Overpass API query zonder music_school
 def build_overpass_query(plaats):
     return f"""
     [out:json];
