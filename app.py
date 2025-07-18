@@ -28,27 +28,22 @@ st.title("🔍 LeadFinder - Let's Go Pest Control")
 
 plaats = st.text_input("Vul een plaatsnaam of provincie in", value="Gorinchem").strip().capitalize()
 
-# Overpass API query opstellen (OpenStreetMap)
+# Overpass API query
 def build_overpass_query(plaats):
     return f"""
     [out:json];
-    area[name=\"{plaats}\"]->.zoekgebied;
+    area[name="{plaats}"]->.zoekgebied;
     (
-      node[\"amenity\"=\"hospital\"](area.zoekgebied);
-      node[\"amenity\"=\"pharmacy\"](area.zoekgebied);
-      node[\"amenity\"=\"school\"](area.zoekgebied);
-      node[\"amenity\"=\"kindergarten\"](area.zoekgebied);
-      node[\"shop\"=\"supermarket\"](area.zoekgebied);
-      node[\"shop\"=\"bakery\"](area.zoekgebied);
-      node[\"shop\"=\"butcher\"](area.zoekgebied);
-      node[\"craft\"=\"confectionery\"](area.zoekgebied);
-      node[\"industrial\"=\"food\"](area.zoekgebied);
-      node[\"man_made\"=\"works\"](area.zoekgebied);
+      node["amenity"~"hospital|pharmacy|school|kindergarten"](area.zoekgebied);
+      node["shop"~"supermarket|bakery|butcher"](area.zoekgebied);
+      node["craft"="confectionery"](area.zoekgebied);
+      node["industrial"="food"](area.zoekgebied);
+      node["man_made"="works"](area.zoekgebied);
     );
-    out body;
+    out tags;
     """
 
-# API-aanroep en verwerking
+@st.cache_data(ttl=600)
 def haal_bedrijven_op(plaats):
     overpass_url = "https://overpass-api.de/api/interpreter"
     query = build_overpass_query(plaats)
@@ -62,26 +57,34 @@ def haal_bedrijven_op(plaats):
 
     bedrijven = []
     grote_ketens = ["Albert Heijn", "Jumbo", "Lidl", "PLUS", "Aldi", "Coop"]
+    branche_map = {
+        "hospital": "Ziekenhuis",
+        "pharmacy": "Apotheek",
+        "school": "School",
+        "kindergarten": "Kinderdagverblijf",
+        "restaurant": "Restaurant",
+        "bakery": "Bakkerij",
+        "butcher": "Slager",
+        "supermarket": "Supermarkt",
+        "confectionery": "Zoetwaren",
+        "food": "Voedselfabriek",
+        "works": "Productielocatie"
+    }
+
     for element in data.get("elements", []):
         tags = element.get("tags", {})
-        naam = tags.get("name", "Onbekend")
+
+        # Skip gesloten, buiten gebruik of naamloze locaties
+        if any(key in tags for key in ["disused", "abandoned", "closed"]):
+            continue
+        if "name" not in tags or not tags.get("name").strip():
+            continue
+
+        naam = tags.get("name")
         straat = tags.get("addr:street", "")
         huisnummer = tags.get("addr:housenumber", "")
         postcode = tags.get("addr:postcode", "")
         branche_raw = tags.get("shop") or tags.get("amenity") or tags.get("craft", "")
-        branche_map = {
-            "hospital": "Ziekenhuis",
-            "pharmacy": "Apotheek",
-            "school": "School",
-            "kindergarten": "Kinderdagverblijf",
-            "restaurant": "Restaurant",
-            "bakery": "Bakkerij",
-            "butcher": "Slager",
-            "supermarket": "Supermarkt",
-            "confectionery": "Zoetwaren",
-            "food": "Voedselfabriek",
-            "works": "Productielocatie"
-        }
         branche = branche_map.get(branche_raw, branche_raw.capitalize())
 
         # Grote supermarktketens overslaan
@@ -96,10 +99,9 @@ def haal_bedrijven_op(plaats):
         elif branche_raw in ["supermarket", "confectionery"]:
             score += 1
 
-        zoek_telefoon = f'<a href="https://www.google.com/search?q=telefoonnummer+{naam.replace(" ", "+")}+{plaats.replace(" ", "+")}" target="_blank">KLIK</a>'
+        zoek_telefoon = f'<a href="https://www.google.com/search?q=telefoonnummer+{urllib.parse.quote(naam)}+{urllib.parse.quote(plaats)}" target="_blank">KLIK</a>'
         
-        if adres != "Onbekend":
-            bedrijven.append({
+        bedrijven.append({
             "Naam instelling": naam,
             "Adres": adres if adres else "Onbekend",
             "Categorie": branche,
@@ -116,17 +118,17 @@ if st.button("Start zoeken"):
 if "resultaten" in st.session_state and st.session_state["resultaten"]:
     df_resultaat = pd.DataFrame(st.session_state["resultaten"])
 
-    # Sidebar filters
+    # Sidebar filter
     st.sidebar.header("🔎 Filters")
     unieke_categorieen = sorted(df_resultaat['Categorie'].unique())
-    gekozen_categorie = st.sidebar.selectbox("Filter op categorie (werkend)", ["Alles"] + unieke_categorieen, key="filter_keuze")
+    gekozen_categorie = st.sidebar.selectbox("Filter op categorie", ["Alles"] + unieke_categorieen, key="filter_keuze")
     if gekozen_categorie != "Alles":
         df_resultaat = df_resultaat[df_resultaat['Categorie'] == gekozen_categorie]
 
     # Samenvatting
     st.markdown(f"### 📊 {len(df_resultaat)} resultaten met gemiddelde score van {df_resultaat['Leadscore'].mean():.1f}")
 
-    # Leadscore visueel
+    # Leadscore-iconen
     def score_icoon(score):
         if score >= 7:
             return f"🟢 {score}"
@@ -136,10 +138,10 @@ if "resultaten" in st.session_state and st.session_state["resultaten"]:
             return f"🔴 {score}"
     df_resultaat['Leadscore'] = df_resultaat['Leadscore'].apply(score_icoon)
 
-    # Data tonen als HTML-tabel met werkende links
+    # HTML-tabel tonen
     st.markdown(df_resultaat.to_html(escape=False, index=False), unsafe_allow_html=True)
 
-    # Downloadknop voor Excel-export
+    # Excel-export
     excel_buffer = io.BytesIO()
     df_resultaat.to_excel(excel_buffer, index=False, engine='openpyxl')
     excel_buffer.seek(0)
